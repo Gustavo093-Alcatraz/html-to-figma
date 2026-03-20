@@ -253,6 +253,35 @@ html, body {
   color: #b8a9ff;
 }
 
+/* ─── Secondary button ─────────────────────────────────────── */
+.import-container {
+  margin-top: 4px;
+}
+.secondary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.secondary-btn:hover {
+  background: var(--bg-input);
+  border-color: var(--text-dim);
+  color: var(--text-primary);
+}
+.secondary-btn:active {
+  transform: scale(0.98);
+}
+
 /* ─── Examples ─────────────────────────────────────────────── */
 .examples {
   padding: 8px 16px 14px;

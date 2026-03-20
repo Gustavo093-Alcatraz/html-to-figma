@@ -42,12 +42,16 @@
         <!-- Options row -->
         <div class="options-row">
           <label class="option-label">
+            <input type="checkbox" id="opt-autolayout" checked />
+            <span>Use Auto Layout</span>
+          </label>
+          <label class="option-label">
             <input type="checkbox" id="opt-center" checked />
-            <span>Center on canvas</span>
+            <span>Center</span>
           </label>
           <label class="option-label">
             <input type="checkbox" id="opt-select" checked />
-            <span>Select after import</span>
+            <span>Select</span>
           </label>
         </div>
 
@@ -67,6 +71,17 @@
 
         <!-- Status message -->
         <div id="status" class="status" hidden></div>
+
+        <!-- Import File Section -->
+        <div class="import-container">
+          <input type="file" id="file-import" accept=".html,.txt" style="display: none;" />
+          <button id="import-btn" class="secondary-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right: 6px; vertical-align: middle; opacity: 0.7;">
+              <path d="M7 9V2m0 0l-2.5 2.5M7 2l2.5 2.5M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Import HTML File from PC
+          </button>
+        </div>
       </main>
 
       <!-- Examples section -->

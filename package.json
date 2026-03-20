@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.96.0",
+    "@types/node": "^25.5.0",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
     "vite-plugin-singlefile": "^2.3.2"

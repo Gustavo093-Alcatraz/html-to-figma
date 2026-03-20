@@ -102,7 +102,7 @@ function applyBorderRadius(
  * If the source element had display:flex or display:grid,
  * enables Auto Layout on this frame.
  */
-function createFrameFromNode(figmaNode: FigmaNode): FrameNode {
+function createFrameFromNode(figmaNode: FigmaNode, useAutolayout: boolean): FrameNode {
   const frame = figma.createFrame();
   const { styles, rect } = figmaNode;
 
@@ -128,7 +128,7 @@ function createFrameFromNode(figmaNode: FigmaNode): FrameNode {
   const display = styles.display;
   const isFlexLike = display === 'flex' || display === 'inline-flex' || display === 'grid';
 
-  if (isFlexLike) {
+  if (useAutolayout && isFlexLike) {
     frame.layoutMode = styles.flexDirection === 'column' || styles.flexDirection === 'column-reverse'
       ? 'VERTICAL'
       : 'HORIZONTAL';
@@ -258,7 +258,7 @@ function createTextFromNode(figmaNode: FigmaNode): TextNode {
  * Recursively converts a FigmaNode AST into Figma native nodes.
  * Returns the top-level SceneNode for this subtree.
  */
-export function convertNode(figmaNode: FigmaNode): SceneNode | null {
+export function convertNode(figmaNode: FigmaNode, useAutolayout: boolean): SceneNode | null {
   let node: SceneNode | null = null;
 
   if (figmaNode.type === 'TEXT') {
@@ -267,11 +267,11 @@ export function convertNode(figmaNode: FigmaNode): SceneNode | null {
 
   } else if (figmaNode.type === 'FRAME') {
     // Container with Auto Layout
-    const frame = createFrameFromNode(figmaNode);
+    const frame = createFrameFromNode(figmaNode, useAutolayout);
 
     // Recursively convert and append children
     for (const child of figmaNode.children) {
-      const childNode = convertNode(child);
+      const childNode = convertNode(child, useAutolayout);
       if (childNode) {
         frame.appendChild(childNode);
 
@@ -289,10 +289,10 @@ export function convertNode(figmaNode: FigmaNode): SceneNode | null {
     // RECTANGLE type
     if (figmaNode.children.length > 0) {
       // Has children → create a plain Frame to contain them
-      const frame = createFrameFromNode({ ...figmaNode, type: 'FRAME' });
+      const frame = createFrameFromNode({ ...figmaNode, type: 'FRAME' }, useAutolayout);
       frame.layoutMode = 'NONE';
       for (const child of figmaNode.children) {
-        const childNode = convertNode(child);
+        const childNode = convertNode(child, useAutolayout);
         if (childNode) frame.appendChild(childNode);
       }
       node = frame;
@@ -311,13 +311,13 @@ export function convertNode(figmaNode: FigmaNode): SceneNode | null {
  */
 export function buildFigmaTrees(
   trees: FigmaNode[],
-  options: { centerOnCanvas: boolean; selectAfterImport: boolean }
+  options: { centerOnCanvas: boolean; selectAfterImport: boolean; useAutolayout: boolean }
 ): SceneNode[] {
   const created: SceneNode[] = [];
 
   let offsetX = 0;
   for (const tree of trees) {
-    const node = convertNode(tree);
+    const node = convertNode(tree, options.useAutolayout);
     if (!node) continue;
 
     // Offset multiple root nodes horizontally so they don't overlap

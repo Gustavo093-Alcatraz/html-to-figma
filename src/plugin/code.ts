@@ -31,7 +31,7 @@ figma.showUI(__html__, {
 figma.ui.onmessage = async (msg: {
   type: string;
   trees?: FigmaNode[];
-  options?: { centerOnCanvas: boolean; selectAfterImport: boolean };
+  options?: { centerOnCanvas: boolean; selectAfterImport: boolean; useAutolayout: boolean };
 }) => {
 
   if (msg.type !== 'CREATE_NODES') return;
@@ -40,7 +40,11 @@ figma.ui.onmessage = async (msg: {
     return;
   }
 
-  const options = msg.options ?? { centerOnCanvas: true, selectAfterImport: true };
+  const options = {
+    centerOnCanvas: msg.options?.centerOnCanvas ?? true,
+    selectAfterImport: msg.options?.selectAfterImport ?? true,
+    useAutolayout: msg.options?.useAutolayout ?? true,
+  };
 
   try {
     // STEP 1: Load all fonts required by the AST.
