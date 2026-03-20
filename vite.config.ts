@@ -1,68 +1,61 @@
 import { defineConfig, build } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
-import { resolve } from "path";
+import { resolve, dirname } from "path";
+import { renameSync, existsSync, mkdirSync } from "fs";
 import type { Plugin } from "vite";
 
 /**
- * Custom Vite plugin: builds the Figma main thread (code.ts) as a
- * self-contained IIFE after the UI HTML build finishes.
- *
- * Why a second pass? Vite can't mix HTML entries (ES module output)
- * with IIFE lib entries in one build — this plugin triggers a
- * programmatic second build that produces dist/code.js.
+ * Custom Vite Plugin: Main Thread (code.js) Build
  */
-function buildCodePlugin(): Plugin {
+function buildFigmaMainTokenPlugin(): Plugin {
   return {
-    name: "build-figma-code",
+    name: "build-figma-main",
     async closeBundle() {
       await build({
         configFile: false,
         build: {
           outDir: "dist",
-          emptyOutDir: false,   // never wipe ui.html
+          emptyOutDir: false,
+          target: "es2017",
+          minify: true,
           lib: {
-            entry:   resolve(__dirname, "src/plugin/code.ts"),
-            name:    "code",
+            entry: resolve(__dirname, "src/plugin/code.ts"),
             formats: ["iife"],
-            fileName: () => "code.js",
+            name: "FigmaPlugin",
+            fileName: () => "code.js"
           },
           rollupOptions: {
-            external: [],
-            output: { exports: "none" },
-          },
-        },
+            output: { exports: "none", extend: false }
+          }
+        }
       });
-    },
+
+      // MOVE UI TO ROOT OF DIST
+      // Vite preserves src/ui/index.html inside dist.
+      // We want it to be dist/ui.html to match manifest.json accurately.
+      const oldPath = resolve(__dirname, "dist/src/ui/index.html");
+      const newPath = resolve(__dirname, "dist/ui.html");
+      if (existsSync(oldPath)) {
+        renameSync(oldPath, newPath);
+      }
+    }
   };
 }
 
-/**
- * Main Vite config — builds the plugin UI iframe.
- *
- * viteSingleFile() inlines all JS and CSS directly into ui.html so the
- * file is completely self-contained. This is REQUIRED for Figma plugin
- * iframes — they run in a sandboxed context with no access to external
- * files, so all resources must be embedded.
- */
 export default defineConfig({
   plugins: [
-    viteSingleFile(),   // ← inlines JS + CSS into the HTML
-    buildCodePlugin(),
+    viteSingleFile(),
+    buildFigmaMainTokenPlugin()
   ],
-
   build: {
-    outDir:      "dist",
+    outDir: "dist",
     emptyOutDir: true,
-
-    // Inline small chunks (viteSingleFile handles the rest)
+    target: "es2017",
     assetsInlineLimit: 100_000_000,
-    cssCodeSplit: false,
-
     rollupOptions: {
       input: {
-        // Produces dist/src/ui/index.html with EVERYTHING inlined
-        ui: resolve(__dirname, "src/ui/index.html"),
-      },
-    },
-  },
+        ui: resolve(__dirname, "src/ui/index.html")
+      }
+    }
+  }
 });
