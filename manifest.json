@@ -6,9 +6,7 @@
   "ui": "dist/ui.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": [
-      "https://fonts.googleapis.com",
-      "https://fonts.gstatic.com"
-    ]
+    "allowedDomains": ["*"],
+    "reasoning": "Allows the plugin to load external assets like images, styles, and fonts from any domain provided in the user's HTML code to ensure accurate conversion."
   }
 }

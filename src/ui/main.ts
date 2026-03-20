@@ -13,7 +13,6 @@ export interface FigmaNode {
 
 /**
  * Examples Registry
- * Provides pre-defined HTML snippets for the 'Quick Examples' section.
  */
 const EXAMPLES: Record<string, string> = {
   "flex-column": `<div style="display: flex; flex-direction: column; gap: 16px; padding: 24px; background: #1a1a24; border-radius: 12px; width: 300px;">
@@ -42,28 +41,54 @@ const EXAMPLES: Record<string, string> = {
 };
 
 /**
+ * Extracts only the body content from a full HTML document string.
+ * This prevents <head>, <meta>, etc. from being rendered in the invisible div.
+ */
+function extractBodyContent(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  return doc.body.innerHTML;
+}
+
+/**
  * Recursively parses the DOM and converts it to a Figma-friendly JSON AST.
- * Calculates coordinates relative to parent element.
  */
 function walkDOM(el: HTMLElement, parentRect: { left: number; top: number }): FigmaNode | null {
-  if (!el || el.offsetParent === null) return null;
+  if (!el) return null;
 
   const rect = el.getBoundingClientRect();
   const styles = window.getComputedStyle(el);
 
+  // Skip elements that are explicitly hidden
   if (styles.display === "none" || styles.visibility === "hidden") return null;
 
+  // Skip elements with no size (unless it's an image which might be loading)
+  const isImage = el.tagName === "IMG";
+  if (!isImage && rect.width === 0 && rect.height === 0) return null;
+
+  // Determine node type
+  let type: "FRAME" | "TEXT" | "RECTANGLE" = "RECTANGLE";
+  const isContainer = el.children.length > 0;
+  const isFlex = styles.display === "flex" || styles.display === "inline-flex";
+  
+  if (isFlex || (isContainer && !isImage)) {
+    type = "FRAME";
+  }
+
   const figmaNode: FigmaNode = {
-    type: styles.display === "flex" || styles.display === "inline-flex" || el.children.length > 0 ? "FRAME" : "RECTANGLE",
+    type,
     name: el.tagName.toLowerCase() + (el.id ? `#${el.id}` : ""),
     rect: {
       x: rect.left - parentRect.left,
       y: rect.top - parentRect.top,
-      width: rect.width,
-      height: rect.height,
+      width: Math.max(0.01, rect.width), // Ensure at least a tiny width
+      height: Math.max(0.01, rect.height),
     },
     styles: {
       backgroundColor: styles.backgroundColor,
+      backgroundImage: styles.backgroundImage, // Capture for future image fill support
+      backgroundSize: styles.backgroundSize,
+      backgroundPosition: styles.backgroundPosition,
       color: styles.color,
       fontSize: styles.fontSize,
       fontWeight: styles.fontWeight,
@@ -89,14 +114,17 @@ function walkDOM(el: HTMLElement, parentRect: { left: number; top: number }): Fi
       borderBottomLeftRadius: styles.borderBottomLeftRadius,
       lineHeight: styles.lineHeight,
       letterSpacing: styles.letterSpacing,
+      // Capture <img> specific src
+      ...(isImage ? { src: (el as HTMLImageElement).src } : {}),
     },
     children: [],
   };
 
-  if (el.children.length === 0 && el.innerText.trim() !== "") {
+  // Special handling for leaf text nodes
+  if (!isImage && el.children.length === 0 && el.innerText.trim() !== "") {
     figmaNode.type = "TEXT";
     figmaNode.text = el.innerText.trim();
-  } else {
+  } else if (isContainer) {
     for (const child of Array.from(el.children)) {
       if (child instanceof HTMLElement) {
         const childNode = walkDOM(child, rect);
@@ -111,11 +139,11 @@ function walkDOM(el: HTMLElement, parentRect: { left: number; top: number }): Fi
 }
 
 /**
- * Captures HTML from the input area and triggers the conversion.
+ * Handle conversion process
  */
 function handleConvert() {
   const htmlInput = (document.getElementById("html-input") as HTMLTextAreaElement).value;
-  const renderRoot = document.getElementById("render-root")!; // FIXED: Corrected ID from render-container to render-root
+  const renderRoot = document.getElementById("render-root")!;
   const btn = document.getElementById("convert-btn") as HTMLButtonElement;
 
   if (!htmlInput.trim()) return;
@@ -127,9 +155,15 @@ function handleConvert() {
   if (btnLabel) btnLabel.hidden = true;
   if (btnLoading) btnLoading.hidden = false;
 
-  // Render HTML invisibly to get computed styles
-  renderRoot.innerHTML = htmlInput;
+  // Sanitize: If it's a full Doc, extract only the body
+  let contentToRender = htmlInput;
+  if (htmlInput.includes("<html") || htmlInput.includes("<!DOCTYPE") || htmlInput.includes("<body")) {
+    contentToRender = extractBodyContent(htmlInput);
+  }
+  
+  renderRoot.innerHTML = contentToRender;
 
+  // Allow time for calculation and network assets
   setTimeout(() => {
     try {
       const trees: FigmaNode[] = [];
@@ -164,7 +198,7 @@ function handleConvert() {
       console.error("Extraction error:", err);
       resetBtn();
     }
-  }, 100);
+  }, 400); // Slightly more time for safer result
 }
 
 function resetBtn() {
@@ -185,7 +219,6 @@ document.getElementById("clear-btn")?.addEventListener("click", () => {
   (document.getElementById("html-input") as HTMLTextAreaElement).value = "";
 });
 
-// File Import logic
 const fileImport = document.getElementById("file-import") as HTMLInputElement;
 const importBtn = document.getElementById("import-btn");
 
@@ -209,7 +242,6 @@ fileImport?.addEventListener("change", (event) => {
   target.value = "";
 });
 
-// Examples chips logic — FIXED: Corrected selector and reference to EXAMPLES object
 document.querySelectorAll(".chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     const exampleKey = (chip as HTMLElement).dataset.example;
@@ -219,7 +251,6 @@ document.querySelectorAll(".chip").forEach((chip) => {
   });
 });
 
-// Listen for success/error messages from the plugin
 window.onmessage = (event) => {
   const msg = event.data.pluginMessage;
   if (msg.type === "SUCCESS" || msg.type === "ERROR") {
