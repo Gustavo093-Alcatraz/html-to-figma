@@ -1,0 +1,16 @@
+{
+  "name": "html-to-figma",
+  "version": "1.0.0",
+  "description": "Converts raw HTML/CSS into native Figma nodes",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.96.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vite-plugin-singlefile": "^2.3.2"
+  }
+}

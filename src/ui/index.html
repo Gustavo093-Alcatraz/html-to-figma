@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML to Figma</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="logo">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect x="2" y="2" width="7" height="7" rx="2" fill="#7B61FF"/>
+            <rect x="11" y="2" width="7" height="7" rx="2" fill="#61DAFB"/>
+            <rect x="2" y="11" width="7" height="7" rx="2" fill="#FF6B6B"/>
+            <rect x="11" y="11" width="7" height="7" rx="2" fill="#4ADE80"/>
+          </svg>
+          <span class="logo-text">HTML to Figma</span>
+        </div>
+        <span class="badge">FREE</span>
+      </header>
+
+      <!-- Input area -->
+      <main class="main">
+        <label class="label" for="html-input">Paste your HTML/CSS code here</label>
+        <div class="textarea-wrapper">
+          <textarea
+            id="html-input"
+            class="code-input"
+            placeholder="&lt;div style=&quot;display:flex; padding:24px;&quot;&gt;&#10;  &lt;h1 style=&quot;color:#7B61FF;&quot;&gt;Hello Figma&lt;/h1&gt;&#10;&lt;/div&gt;"
+            spellcheck="false"
+          ></textarea>
+          <button id="clear-btn" class="clear-btn" title="Clear" aria-label="Clear input">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Options row -->
+        <div class="options-row">
+          <label class="option-label">
+            <input type="checkbox" id="opt-center" checked />
+            <span>Center on canvas</span>
+          </label>
+          <label class="option-label">
+            <input type="checkbox" id="opt-select" checked />
+            <span>Select after import</span>
+          </label>
+        </div>
+
+        <!-- Convert button -->
+        <button id="convert-btn" class="convert-btn">
+          <svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 8h12M9 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="btn-label">Convert to Figma</span>
+          <span class="btn-loading" hidden>
+            <svg class="spinner" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" stroke-dasharray="25 13" stroke-linecap="round"/>
+            </svg>
+            Converting…
+          </span>
+        </button>
+
+        <!-- Status message -->
+        <div id="status" class="status" hidden></div>
+      </main>
+
+      <!-- Examples section -->
+      <section class="examples">
+        <p class="examples-title">Quick examples</p>
+        <div class="example-chips">
+          <button class="chip" data-example="flex-column">Flex Column</button>
+          <button class="chip" data-example="flex-row">Flex Row</button>
+          <button class="chip" data-example="card">Card UI</button>
+          <button class="chip" data-example="button">Button</button>
+        </div>
+      </section>
+    </div>
+
+    <!--
+      HIDDEN RENDER CONTAINER
+      This invisible div is where we inject and render the user's HTML so
+      the browser computes real layout and we can call getComputedStyle() on each element.
+      It must be in the DOM but invisible — we use visibility:hidden + position:fixed
+      so it doesn't affect plugin UI layout but DOES compute styles.
+    -->
+    <div id="render-root" aria-hidden="true"></div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
