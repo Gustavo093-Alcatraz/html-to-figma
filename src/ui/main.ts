@@ -12,19 +12,47 @@ export interface FigmaNode {
 }
 
 /**
+ * Examples Registry
+ * Provides pre-defined HTML snippets for the 'Quick Examples' section.
+ */
+const EXAMPLES: Record<string, string> = {
+  "flex-column": `<div style="display: flex; flex-direction: column; gap: 16px; padding: 24px; background: #1a1a24; border-radius: 12px; width: 300px;">
+  <div style="height: 40px; background: #7B61FF; border-radius: 6px;"></div>
+  <div style="height: 40px; background: #61DAFB; border-radius: 6px;"></div>
+  <div style="height: 40px; background: #FF6B6B; border-radius: 6px;"></div>
+</div>`,
+  "flex-row": `<div style="display: flex; flex-direction: row; gap: 12px; padding: 20px; background: #18181f; border: 1px solid #2e2e3e; border-radius: 10px;">
+  <div style="width: 48px; height: 48px; background: #4ADE80; border-radius: 50%;"></div>
+  <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+    <div style="width: 100px; height: 12px; background: #f0f0ff; border-radius: 4px;"></div>
+    <div style="width: 60px; height: 8px; background: #8888aa; border-radius: 4px;"></div>
+  </div>
+</div>`,
+  "card": `<div style="width: 260px; background: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); font-family: sans-serif;">
+  <div style="height: 140px; background: linear-gradient(135deg, #7B61FF, #61DAFB);"></div>
+  <div style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 18px; color: #18181f;">Premium Design</h2>
+    <p style="margin: 0; font-size: 14px; color: #55556f; line-height: 1.4;">This card was converted from raw HTML to native Figma layers.</p>
+    <button style="padding: 10px; background: #7B61FF; color: white; border: none; border-radius: 8px; font-weight: 600;">Action</button>
+  </div>
+</div>`,
+  "button": `<button style="background: #7B61FF; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
+  Action Button
+</button>`
+};
+
+/**
  * Recursively parses the DOM and converts it to a Figma-friendly JSON AST.
- * We now use relative coordinates (node relative to parent) for better
- * compatibility with both Auto Layout and manual positioning.
+ * Calculates coordinates relative to parent element.
  */
 function walkDOM(el: HTMLElement, parentRect: { left: number; top: number }): FigmaNode | null {
-  if (!el || el.offsetParent === null) return null; // Skip hidden elements
+  if (!el || el.offsetParent === null) return null;
 
   const rect = el.getBoundingClientRect();
   const styles = window.getComputedStyle(el);
 
   if (styles.display === "none" || styles.visibility === "hidden") return null;
 
-  // Calculate coordinates relative to parent
   const figmaNode: FigmaNode = {
     type: styles.display === "flex" || styles.display === "inline-flex" || el.children.length > 0 ? "FRAME" : "RECTANGLE",
     name: el.tagName.toLowerCase() + (el.id ? `#${el.id}` : ""),
@@ -65,15 +93,13 @@ function walkDOM(el: HTMLElement, parentRect: { left: number; top: number }): Fi
     children: [],
   };
 
-  // Special handling for text nodes
   if (el.children.length === 0 && el.innerText.trim() !== "") {
     figmaNode.type = "TEXT";
     figmaNode.text = el.innerText.trim();
   } else {
-    // Process children recursively, passing current rect as parentRect
     for (const child of Array.from(el.children)) {
       if (child instanceof HTMLElement) {
-        const childNode = walkDOM(child, rect); // current rect becomes parentRect
+        const childNode = walkDOM(child, rect);
         if (childNode) {
           figmaNode.children.push(childNode);
         }
@@ -85,29 +111,30 @@ function walkDOM(el: HTMLElement, parentRect: { left: number; top: number }): Fi
 }
 
 /**
- * Captures HTML from the input areas and triggers the conversion.
+ * Captures HTML from the input area and triggers the conversion.
  */
 function handleConvert() {
   const htmlInput = (document.getElementById("html-input") as HTMLTextAreaElement).value;
-  const renderContainer = document.getElementById("render-container")!;
+  const renderRoot = document.getElementById("render-root")!; // FIXED: Corrected ID from render-container to render-root
   const btn = document.getElementById("convert-btn") as HTMLButtonElement;
 
   if (!htmlInput.trim()) return;
 
   btn.disabled = true;
-  btn.innerText = "Processing...";
+  const btnLabel = btn.querySelector('.btn-label') as HTMLElement;
+  const btnLoading = btn.querySelector('.btn-loading') as HTMLElement;
+  
+  if (btnLabel) btnLabel.hidden = true;
+  if (btnLoading) btnLoading.hidden = false;
 
-  // 1. Render HTML invisibly to get computed styles
-  renderContainer.innerHTML = htmlInput;
+  // Render HTML invisibly to get computed styles
+  renderRoot.innerHTML = htmlInput;
 
-  // Wait a frame for the browser to calculate layout
   setTimeout(() => {
     try {
       const trees: FigmaNode[] = [];
-      const rootElements = Array.from(renderContainer.children);
-
-      // Use the renderContainer's rect as the initial parentRect (0,0 reference)
-      const containerRect = renderContainer.getBoundingClientRect();
+      const rootElements = Array.from(renderRoot.children);
+      const containerRect = renderRoot.getBoundingClientRect();
 
       for (const el of rootElements) {
         if (el instanceof HTMLElement) {
@@ -116,12 +143,10 @@ function handleConvert() {
         }
       }
 
-      // 2. Capture options
       const useAutolayout = (document.getElementById("opt-autolayout") as HTMLInputElement).checked;
       const centerOnCanvas = (document.getElementById("opt-center") as HTMLInputElement).checked;
       const selectAfterImport = (document.getElementById("opt-select") as HTMLInputElement).checked;
 
-      // 3. Send AST to Figma Main Thread
       parent.postMessage({
         pluginMessage: {
           type: "CREATE_NODES",
@@ -134,19 +159,28 @@ function handleConvert() {
         },
       }, "*");
 
-      renderContainer.innerHTML = "";
+      renderRoot.innerHTML = "";
     } catch (err) {
       console.error("Extraction error:", err);
-      btn.disabled = false;
-      btn.innerText = "Convert to Figma";
+      resetBtn();
     }
   }, 100);
 }
 
-// Event Listeners
+function resetBtn() {
+  const btn = document.getElementById("convert-btn") as HTMLButtonElement;
+  const btnLabel = btn.querySelector('.btn-label') as HTMLElement;
+  const btnLoading = btn.querySelector('.btn-loading') as HTMLElement;
+  
+  btn.disabled = false;
+  if (btnLabel) btnLabel.hidden = false;
+  if (btnLoading) btnLoading.hidden = true;
+}
+
+// ─── Event Listeners ─────────────────────────────────────────
+
 document.getElementById("convert-btn")?.addEventListener("click", handleConvert);
 
-// Clear button logic
 document.getElementById("clear-btn")?.addEventListener("click", () => {
   (document.getElementById("html-input") as HTMLTextAreaElement).value = "";
 });
@@ -172,27 +206,24 @@ fileImport?.addEventListener("change", (event) => {
     }
   };
   reader.readAsText(file);
-  
-  // Reset input so the same file can be imported again if needed
   target.value = "";
+});
+
+// Examples chips logic — FIXED: Corrected selector and reference to EXAMPLES object
+document.querySelectorAll(".chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const exampleKey = (chip as HTMLElement).dataset.example;
+    if (exampleKey && EXAMPLES[exampleKey]) {
+      (document.getElementById("html-input") as HTMLTextAreaElement).value = EXAMPLES[exampleKey];
+    }
+  });
 });
 
 // Listen for success/error messages from the plugin
 window.onmessage = (event) => {
   const msg = event.data.pluginMessage;
-  const btn = document.getElementById("convert-btn") as HTMLButtonElement;
-
   if (msg.type === "SUCCESS" || msg.type === "ERROR") {
-    btn.disabled = false;
-    btn.innerText = "Convert to Figma";
+    resetBtn();
     if (msg.type === "ERROR") alert(msg.message);
   }
 };
-
-// Example buttons
-document.querySelectorAll(".example-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const html = (btn as HTMLElement).dataset.html || "";
-    (document.getElementById("html-input") as HTMLTextAreaElement).value = html;
-  });
-});
